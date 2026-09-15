@@ -1,4 +1,5 @@
 from datetime import datetime
+from enum import StrEnum
 
 from sqlalchemy import (
     BigInteger,
@@ -46,6 +47,10 @@ class Supplier(Base):
         DateTime(timezone=True), server_default=func.now()
     )
 
+class Role(StrEnum):
+    ADMIN = "admin"
+    PURCHASER = "purchaser"
+    WAREHOUSE = "warehouse"
 
 class User(Base):
     __tablename__ = "users"
@@ -54,11 +59,17 @@ class User(Base):
     email: Mapped[str] = mapped_column(Text, unique=True)
     password_hash: Mapped[str] = mapped_column(Text)
     # admin | purchaser | warehouse — CHECK in the migration enforces this.
-    role: Mapped[str] = mapped_column(Text)
+    role: Mapped[Role] = mapped_column(Text)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )
 
+class PurchaseOrderStatus(StrEnum):
+    DRAFT = "draft"
+    SUBMITTED = "submitted"
+    PARTIAL = "partial"
+    RECEIVED = "received"
+    CANCELLED = "cancelled"
 
 class PurchaseOrder(Base):
     __tablename__ = "purchase_orders"
@@ -66,7 +77,7 @@ class PurchaseOrder(Base):
     id: Mapped[int] = mapped_column(BigInteger, Identity(), primary_key=True)
     po_number: Mapped[str] = mapped_column(Text, unique=True)
     supplier_id: Mapped[int] = mapped_column(ForeignKey("suppliers.id"))
-    status: Mapped[str] = mapped_column(Text, server_default="draft")
+    status: Mapped[PurchaseOrderStatus] = mapped_column(Text, server_default=PurchaseOrderStatus.DRAFT)
     created_by: Mapped[int] = mapped_column(ForeignKey("users.id"))
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
@@ -128,13 +139,17 @@ class StockMovement(Base):
         DateTime(timezone=True), server_default=func.now()
     )
 
+class ImportJobStatus(StrEnum):
+    PENDING = "pending"
+    COMPLETED_WITH_ERRORS = "completed_with_errors"
+    COMPLETED = "completed"
 
 class ImportJob(Base):
     __tablename__ = "import_jobs"
 
     id: Mapped[int] = mapped_column(BigInteger, Identity(), primary_key=True)
     filename: Mapped[str] = mapped_column(Text)
-    status: Mapped[str] = mapped_column(Text)
+    status: Mapped[ImportJobStatus] = mapped_column(Text)
     imported_count: Mapped[int] = mapped_column(Integer, server_default="0")
     error_count: Mapped[int] = mapped_column(Integer, server_default="0")
     created_by: Mapped[int] = mapped_column(ForeignKey("users.id"))

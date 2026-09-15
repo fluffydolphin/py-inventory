@@ -16,7 +16,7 @@ from sqlalchemy import select
 
 from app.auth import hash_password
 from app.db import SessionLocal
-from app.models import User
+from app.models import Role, User
 
 EMAIL = "admin@example.com"
 PASSWORD = "admin"
@@ -32,7 +32,7 @@ def main() -> None:
         user = User(
             email=EMAIL,
             password_hash=hash_password(PASSWORD),
-            role="admin",
+            role=Role.ADMIN,
         )
         db.add(user)
         db.commit()

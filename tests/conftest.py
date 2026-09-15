@@ -8,7 +8,16 @@ from sqlalchemy.orm import Session, sessionmaker
 from app.auth import hash_password
 from app.db import get_db
 from app.main import app
-from app.models import Base, PoLine, Product, PurchaseOrder, Supplier, User
+from app.models import (
+    Base,
+    PoLine,
+    Product,
+    PurchaseOrder,
+    PurchaseOrderStatus,
+    Role,
+    Supplier,
+    User,
+)
 
 # Separate database so tests never touch the rows you created in /docs.
 TEST_URL = "postgresql+psycopg://inventory:inventory@localhost:5432/inventory_test"
@@ -67,7 +76,7 @@ def client(db: Session) -> TestClient:
     app.dependency_overrides.clear()
 
 
-def _create_user(db: Session, email: str, password: str, role: str) -> User:
+def _create_user(db: Session, email: str, password: str, role: Role) -> User:
     user = User(email=email, password_hash=hash_password(password), role=role)
     db.add(user)
     db.commit()
@@ -77,17 +86,17 @@ def _create_user(db: Session, email: str, password: str, role: str) -> User:
 
 @pytest.fixture
 def admin_user(db: Session) -> User:
-    return _create_user(db, "admin@test.com", "secret", "admin")
+    return _create_user(db, "admin@test.com", "secret", Role.ADMIN)
 
 
 @pytest.fixture
 def purchaser_user(db: Session) -> User:
-    return _create_user(db, "buyer@test.com", "secret", "purchaser")
+    return _create_user(db, "buyer@test.com", "secret", Role.PURCHASER)
 
 
 @pytest.fixture
 def warehouse_user(db: Session) -> User:
-    return _create_user(db, "warehouse@test.com", "secret", "warehouse")
+    return _create_user(db, "warehouse@test.com", "secret", Role.WAREHOUSE)
 
 
 @pytest.fixture
@@ -155,7 +164,7 @@ def submitted_po(db: Session, purchaser_user: User, supplier: Supplier, product:
     po = PurchaseOrder(
         po_number="tmp-test",
         supplier_id=supplier.id,
-        status="submitted",
+        status=PurchaseOrderStatus.SUBMITTED,
         created_by=purchaser_user.id,
         submitted_at=datetime.now(timezone.utc),
     )

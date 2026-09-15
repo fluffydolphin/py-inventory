@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 
 from app.auth import require_admin
 from app.db import get_db
-from app.models import ImportJob, ImportJobError, Product, StockMovement, User
+from app.models import ImportJob, ImportJobError, Product, StockMovement, User, ImportJobStatus
 from app.schemas import ImportErrorOut, ImportJobOut
 
 router = APIRouter(tags=["imports"])
@@ -72,7 +72,7 @@ def import_products(
 
     job = ImportJob(
         filename=file.filename or "products.csv",
-        status="pending",
+        status=ImportJobStatus.PENDING,
         created_by=actor.id,
     )
     db.add(job)
@@ -87,7 +87,7 @@ def import_products(
                 message=f"Missing columns: {', '.join(missing)}",
             )
         )
-        job.status = "completed_with_errors"
+        job.status = ImportJobStatus.COMPLETED_WITH_ERRORS
         job.error_count = 1
         db.commit()
         db.refresh(job)
@@ -179,7 +179,7 @@ def import_products(
 
     job.imported_count = imported
     job.error_count = errors
-    job.status = "completed_with_errors" if errors else "completed"
+    job.status = ImportJobStatus.COMPLETED_WITH_ERRORS if errors else ImportJobStatus.COMPLETED
     db.commit()
     db.refresh(job)
     return job

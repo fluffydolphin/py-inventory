@@ -6,12 +6,10 @@ from sqlalchemy.orm import Session, selectinload
 
 from app.auth import get_current_user, require_purchaser_or_admin, require_warehouse_or_admin
 from app.db import get_db
-from app.models import PoLine, PoReceive, Product, PurchaseOrder, StockMovement, Supplier, User
+from app.models import PoLine, PoReceive, Product, PurchaseOrder, StockMovement, Supplier, User, PurchaseOrderStatus
 from app.schemas import PurchaseOrderCreate, PurchaseOrderOut, ReceiveIn
 
 router = APIRouter(prefix="/purchase-orders", tags=["purchase-orders"])
-
-PO_STATUSES = ("draft", "submitted", "partial", "received", "cancelled")
 
 
 def _load_po(db: Session, po_id: int) -> PurchaseOrder | None:
@@ -61,7 +59,7 @@ def create_purchase_order(
     po = PurchaseOrder(
         po_number=f"tmp-{actor.id}-{datetime.now(timezone.utc).timestamp()}",
         supplier_id=supplier.id,
-        status="draft",
+        status=PurchaseOrderStatus.DRAFT,
         created_by=actor.id,
     )
     db.add(po)
@@ -91,7 +89,7 @@ def list_purchase_orders(
     limit: int = Query(default=50, ge=1, le=100),
     offset: int = Query(default=0, ge=0),
 ) -> list[PurchaseOrder]:
-    if status_filter is not None and status_filter not in PO_STATUSES:
+    if status_filter is not None and status_filter not in PurchaseOrderStatus:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Invalid status",
@@ -130,12 +128,12 @@ def submit_purchase_order(
     po = _load_po(db, po_id)
     if po is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Purchase order not found")
-    if po.status != "draft":
+    if po.status != PurchaseOrderStatus.DRAFT:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Only a draft PO can be submitted",
         )
-    po.status = "submitted"
+    po.status = PurchaseOrderStatus.SUBMITTED
     po.submitted_at = datetime.now(timezone.utc)
     db.commit()
     loaded = _load_po(db, po.id)
@@ -152,17 +150,17 @@ def cancel_purchase_order(
     po = _load_po(db, po_id)
     if po is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Purchase order not found")
-    if po.status in ("partial", "received"):
+    if po.status in (PurchaseOrderStatus.PARTIAL, PurchaseOrderStatus.RECEIVED):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Cannot cancel after stock has been received",
         )
-    if po.status == "cancelled":
+    if po.status == PurchaseOrderStatus.CANCELLED:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="PO is already cancelled",
         )
-    po.status = "cancelled"
+    po.status = PurchaseOrderStatus.CANCELLED
     db.commit()
     loaded = _load_po(db, po.id)
     assert loaded is not None
@@ -194,7 +192,7 @@ def receive_purchase_order(
         assert loaded is not None
         return loaded
 
-    if po.status not in ("submitted", "partial"):
+    if po.status not in (PurchaseOrderStatus.SUBMITTED, PurchaseOrderStatus.PARTIAL):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Only submitted or partial POs can be received",
@@ -257,10 +255,10 @@ def receive_purchase_order(
         )
 
     if all(line.qty_received == line.qty_ordered for line in po_lines):
-        po.status = "received"
+        po.status = PurchaseOrderStatus.RECEIVED
         po.received_at = datetime.now(timezone.utc)
     else:
-        po.status = "partial"
+        po.status = PurchaseOrderStatus.PARTIAL
 
     db.commit()
     loaded = _load_po(db, po.id)

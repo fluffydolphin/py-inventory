@@ -8,7 +8,7 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.orm import Session
 
 from app.db import get_db
-from app.models import User
+from app.models import User, Role
 
 # HS256 needs a secret only the server knows. This default is for local learning.
 # A live deploy must set JWT_SECRET to a long random string.
@@ -28,7 +28,7 @@ def verify_password(plain: str, hashed: str) -> bool:
     return bcrypt.checkpw(plain.encode(), hashed.encode())
 
 
-def create_access_token(*, user_id: int, role: str) -> str:
+def create_access_token(*, user_id: int, role: Role) -> str:
     payload = {
         "sub": str(user_id),
         "role": role,
@@ -66,7 +66,7 @@ def get_current_user(
 
 
 def require_admin(user: User = Depends(get_current_user)) -> User:
-    if user.role != "admin":
+    if user.role != Role.ADMIN:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Admin only",
@@ -75,7 +75,7 @@ def require_admin(user: User = Depends(get_current_user)) -> User:
 
 
 def require_purchaser_or_admin(user: User = Depends(get_current_user)) -> User:
-    if user.role not in ("admin", "purchaser"):
+    if user.role not in (Role.ADMIN, Role.PURCHASER):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Purchaser or admin only",
@@ -84,7 +84,7 @@ def require_purchaser_or_admin(user: User = Depends(get_current_user)) -> User:
 
 
 def require_warehouse_or_admin(user: User = Depends(get_current_user)) -> User:
-    if user.role not in ("admin", "warehouse"):
+    if user.role not in (Role.ADMIN, Role.WAREHOUSE):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Warehouse or admin only",
