@@ -26,7 +26,7 @@ def test_import_partial_success(admin_client):
     assert body["imported_count"] == 97
     assert body["error_count"] == 3
 
-    products = admin_client.get("/products").json()
+    products = admin_client.get("/products", params={"limit": 100}).json()
     assert len(products) == 97
 
     errors = admin_client.get(f"/imports/{body['id']}/errors").json()

@@ -63,6 +63,8 @@ def list_stock(
     db: Session = Depends(get_db),
     _user: User = Depends(get_current_user),
     low_stock: bool = Query(default=False),
+    limit: int = Query(default=50, ge=1, le=100),
+    offset: int = Query(default=0, ge=0),
 ) -> list[Product]:
     stmt = select(Product).order_by(Product.id)
     if low_stock:
@@ -70,4 +72,4 @@ def list_stock(
             Product.reorder_point.is_not(None),
             Product.qty_on_hand <= Product.reorder_point,
         )
-    return list(db.scalars(stmt))
+    return list(db.scalars(stmt.limit(limit).offset(offset)))

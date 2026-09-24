@@ -1,4 +1,4 @@
-from fastapi import Depends, FastAPI, HTTPException, status
+from fastapi import Depends, FastAPI, HTTPException, status, Query
 from sqlalchemy import select, text
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
@@ -54,8 +54,10 @@ def login(body: LoginIn, db: Session = Depends(get_db)) -> TokenOut:
 def list_products(
     db: Session = Depends(get_db),
     _user: User = Depends(get_current_user),
+    limit: int = Query(default=50, ge=1, le=100),
+    offset: int = Query(default=0, ge=0),
 ) -> list[Product]:
-    return list(db.scalars(select(Product).order_by(Product.id)))
+    return list(db.scalars(select(Product).order_by(Product.id).limit(limit).offset(offset)))
 
 
 @app.post("/products", response_model=ProductOut, status_code=status.HTTP_201_CREATED)
