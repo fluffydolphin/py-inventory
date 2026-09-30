@@ -91,6 +91,8 @@ def list_product_movements(
     product_id: int,
     db: Session = Depends(get_db),
     _user: User = Depends(get_current_user),
+    limit: int = Query(default=50, ge=1, le=100),
+    offset: int = Query(default=0, ge=0),
 ) -> list[StockMovement]:
     product = db.get(Product, product_id)
     if product is None:
@@ -100,6 +102,8 @@ def list_product_movements(
             select(StockMovement)
             .where(StockMovement.product_id == product_id)
             .order_by(StockMovement.id)
+            .limit(limit)
+            .offset(offset)
         )
     )
 

@@ -14,3 +14,6 @@ wheels/
 
 # Local secrets
 .env
+
+# Locust CSV reports
+loadtest/results_*

@@ -29,6 +29,17 @@ uv run fastapi dev app/main.py
 uv run pytest -v
 ```
 
+## Load test
+
+API already up, from this folder:
+
+```powershell
+uv sync
+uv run locust -f loadtest/locustfile.py --host http://127.0.0.1:8000
+```
+
+Open http://localhost:8089. Users log in once as the seeded admin, then wait 1–3 seconds between calls. Most traffic is listing products, stock, and purchase orders. Some users create and submit a purchase order. A few add stock. The ramp holds 10, then 25, 50, and 100 users. That ramp is `StepLoad` in the locustfile, so `--users` and `--run-time` are ignored until you remove that class.
+
 ## Purchase order status
 
 ```
